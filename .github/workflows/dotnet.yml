@@ -1,4 +1,4 @@
-name: .NET CI
+name: .NET Build & Test
 
 on:
   push:
@@ -7,31 +7,24 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build-and-test:
-    name: Build and Test
+  build:
+    name: Build & Test
     runs-on: ubuntu-latest
 
     steps:
-      - name: 🛒 Checkout code
+      - name: 📥 Checkout Code
         uses: actions/checkout@v4
 
-      - name: 🛠️ Setup .NET
+      - name: 🧰 Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
 
-      - name: 📦 Restore dependencies
-        run: dotnet restore
+      - name: 📦 Restore Dependencies
+        run: dotnet restore ReadingTrackerAPIs/ReadingTrackerAPIs.csproj
 
-      - name: 🔨 Build solution
-        run: dotnet build --no-restore --configuration Release
+      - name: 🛠️ Build Project
+        run: dotnet build ReadingTrackerAPIs/ReadingTrackerAPIs.csproj --configuration Release --no-restore
 
-      - name: ✅ Run tests
-        run: dotnet test --no-build --verbosity normal --logger trx --results-directory TestResults
-
-      - name: 📤 Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results
-          path: TestResults/*.trx
+      - name: ✅ Run Tests
+        run: dotnet test --no-build --verbosity normal
