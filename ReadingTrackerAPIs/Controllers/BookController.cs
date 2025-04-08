@@ -21,7 +21,7 @@ namespace ReadingTrackerAPIs.Controllers
             return Ok(books);
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("id")]
         public async Task<IActionResult> GetById(Guid id)
         {
             if (id == Guid.Empty)
@@ -36,12 +36,12 @@ namespace ReadingTrackerAPIs.Controllers
         }
 
         [HttpDelete("id")]
-        public async Task<IActionResult> deleteBook(Guid id)
+        public async Task<IActionResult> DeleteBook(Guid id)
         {
             if (id == Guid.Empty)
                 return BadRequest("Book Id cannot be null");
 
-            var deletedBook = _bookService.DeleteBookAsync(id);
+            var deletedBook = await _bookService.DeleteBookAsync(id);
 
             if (deletedBook == null)
                 return BadRequest("Unable to delete a book");
@@ -51,7 +51,7 @@ namespace ReadingTrackerAPIs.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> createBook(BookDto dto)
+        public async Task<IActionResult> CreateBook(BookDto dto)
         {
             if (dto == null)
                 return BadRequest("Failed to create a book, please ensure that all required information is " +
@@ -68,7 +68,7 @@ namespace ReadingTrackerAPIs.Controllers
 
 
         [HttpPut("id")]
-        public async Task<IActionResult> updateBook(Guid id, BookDto dto)
+        public async Task<IActionResult> UpdateBook(Guid id, BookDto dto)
         {
             if (dto == null)
                 return BadRequest("Failed to create a book, please ensure that all required information is " +
