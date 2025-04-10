@@ -6,7 +6,7 @@ using ReadingTrackerAPIs.Models.Entity;
 using ReadingTrackerAPIs.Models.MyEnums;
 
 namespace ReadingTrackerAPIs.Services.Books
-{
+{ 
     public class BookService : IBookService
     {
         private readonly IMapper _mapper;
