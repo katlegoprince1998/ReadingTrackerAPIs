@@ -6,7 +6,7 @@ namespace ReadingTrackerAPIs.Dtos
     {
         public Guid Id { get; set; }
         public required User User { get; set; }
-        public required User Book { get; set; }
+        public required Book Book { get; set; }
         public required string Content { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
