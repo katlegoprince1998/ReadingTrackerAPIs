@@ -1,16 +1,11 @@
-﻿using ReadingTrackerAPIs.Models.Entity;
-
-namespace ReadingTrackerAPIs.Dtos
+﻿namespace ReadingTrackerAPIs.Dtos.Request
 {
-    public class YearlyGoalDto
+    public class UpdateYearlyGoalDto
     {
-        public Guid Id { get; set; }
-        public required User User { get; set; }
         public int Year { get; set; }
         public int GoalCount { get; set; }
         public int BooksRead { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
     }
-
 }
