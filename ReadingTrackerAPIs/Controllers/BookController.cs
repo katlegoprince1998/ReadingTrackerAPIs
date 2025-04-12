@@ -8,87 +8,73 @@ namespace ReadingTrackerAPIs.Controllers
     [ApiController]
     public class BookController : ControllerBase
     {
-        private IBookService _bookService;
+        private readonly IBookService _bookService;
 
         public BookController(IBookService bookService)
         {
-            _bookService = bookService;
-        }
-        [HttpGet]
-        public async Task<IActionResult> GetAll()
-        {
-            var books = await _bookService.GetAllBooksAsync();
-            return Ok(books);
+            _bookService = bookService ?? throw new ArgumentNullException(nameof(bookService));
         }
 
-        [HttpGet("id")]
-        public async Task<IActionResult> GetById(Guid id)
+        [HttpPost("{userId}")]
+        public async Task<ActionResult<BookDto>> CreateBook([FromBody] BookDto bookDto, Guid userId)
+        {
+            if (bookDto == null)
+                return BadRequest("Book data is required.");
+
+            var createdBook = await _bookService.CreateBookAsync(bookDto, userId);
+
+            return CreatedAtAction(nameof(GetBookById), new { id = createdBook.Id, userId }, createdBook);
+        }
+
+        [HttpPut("{id}/user/{userId}")]
+        public async Task<ActionResult<BookDto>> UpdateBook(Guid id, Guid userId, [FromBody] BookDto bookDto)
         {
             if (id == Guid.Empty)
-                return BadRequest("Book Id cannot be empty.");
+                return BadRequest("Book ID cannot be empty.");
+            if (bookDto == null)
+                return BadRequest("Book data is required.");
 
-            var book = await _bookService.GetBookByIdAsync(id);
+            var updatedBook = await _bookService.UpdateBookAsync(bookDto, id, userId);
+
+            if (updatedBook == null)
+                return NotFound($"Book with ID {id} not found or access denied.");
+
+            return Ok(updatedBook);
+        }
+
+        [HttpDelete("{id}/user/{userId}")]
+        public async Task<ActionResult<BookDto>> DeleteBook(Guid id, Guid userId)
+        {
+            if (id == Guid.Empty)
+                return BadRequest("Book ID cannot be empty.");
+
+            var deletedBook = await _bookService.DeleteBookAsync(id, userId);
+
+            if (deletedBook == null)
+                return NotFound($"Book with ID {id} not found or access denied.");
+
+            return Ok(deletedBook);
+        }
+
+        [HttpGet("{id}/user/{userId}")]
+        public async Task<ActionResult<BookDto>> GetBookById(Guid id, Guid userId)
+        {
+            if (id == Guid.Empty)
+                return BadRequest("Book ID cannot be empty.");
+
+            var book = await _bookService.GetBookByIdAsync(id, userId);
 
             if (book == null)
-                return NotFound("Book not found.");
+                return NotFound($"Book with ID {id} not found or access denied.");
 
             return Ok(book);
         }
 
-        [HttpDelete("id")]
-        public async Task<IActionResult> DeleteBook(Guid id)
+        [HttpGet("user/{userId}")]
+        public async Task<ActionResult<IEnumerable<BookDto>>> GetAllBooks(Guid userId)
         {
-            if (id == Guid.Empty)
-                return BadRequest("Book Id cannot be null");
-
-            var deletedBook = await _bookService.DeleteBookAsync(id);
-
-            if (deletedBook == null)
-                return BadRequest("Unable to delete a book");
-
-            return Ok(deletedBook);
-
+            var books = await _bookService.GetAllBooksAsync(userId);
+            return Ok(books);
         }
-
-        [HttpPost]
-        public async Task<IActionResult> CreateBook(BookDto dto)
-        {
-            if (dto == null)
-                return BadRequest("Failed to create a book, please ensure that all required information is " +
-                    "provided");
-
-            var createdBook = await _bookService.CreateBookAsync(dto);
-
-            if (createdBook == null)
-                return BadRequest("Failed to create a book, please ensure that all required information is " +
-                     "provided");
-
-            return Ok(createdBook);
-        }
-
-
-        [HttpPut("id")]
-        public async Task<IActionResult> UpdateBook(Guid id, BookDto dto)
-        {
-            if (dto == null)
-                return BadRequest("Failed to create a book, please ensure that all required information is " +
-                    "provided");
-
-            if(dto == null)
-                return BadRequest("Failed to create a book, please ensure that all required information is " +
-                    "provided");
-
-            var updatedBook = await _bookService.UpdateBookAsync(dto, id);
-
-            if (updatedBook == null)
-                return BadRequest("Failed to update book Id");
-
-            return Ok(updatedBook);
-        }
-        
-
     }
-
-
-
 }

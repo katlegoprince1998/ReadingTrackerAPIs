@@ -4,6 +4,7 @@
     {
         NotStarted,
         Reading,
-        Completed
+        Completed,
+        Unread
     }
 }

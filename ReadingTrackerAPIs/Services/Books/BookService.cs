@@ -6,7 +6,7 @@ using ReadingTrackerAPIs.Models.Entity;
 using ReadingTrackerAPIs.Models.MyEnums;
 
 namespace ReadingTrackerAPIs.Services.Books
-{ 
+{
     public class BookService : IBookService
     {
         private readonly IMapper _mapper;
@@ -14,8 +14,8 @@ namespace ReadingTrackerAPIs.Services.Books
 
         public BookService(IMapper mapper, ApplicationDbContext context)
         {
-            _mapper = mapper;
-            _context = context;
+            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+            _context = context ?? throw new ArgumentNullException(nameof(context));
         }
 
         public async Task<BookDto> CreateBookAsync(BookDto bookDto, Guid userId)
@@ -23,24 +23,23 @@ namespace ReadingTrackerAPIs.Services.Books
             if (bookDto == null)
                 throw new ArgumentNullException(nameof(bookDto), "Book object cannot be null.");
 
-            var bookEntity = _mapper.Map<Book>(bookDto);
-            bookEntity.UserId = userId;
-            bookEntity.CreatedAt = DateTime.UtcNow;
+            var book = _mapper.Map<Book>(bookDto);
+            book.UserId = userId;
+            book.CreatedAt = DateTime.UtcNow;
+            book.Status = Enum.IsDefined(typeof(BookStatus), bookDto.Status) ? bookDto.Status : BookStatus.Unread;
 
-            await _context.Books.AddAsync(bookEntity);
+            await _context.Books.AddAsync(book);
             await _context.SaveChangesAsync();
 
-            return _mapper.Map<BookDto>(bookEntity);
+            return _mapper.Map<BookDto>(book);
         }
 
         public async Task<BookDto> DeleteBookAsync(Guid id, Guid userId)
         {
             if (id == Guid.Empty)
-                throw new ArgumentNullException(nameof(id), "Book ID cannot be empty.");
+                throw new ArgumentException("Book ID cannot be empty.", nameof(id));
 
-            var book = await _context.Books
-                .FirstOrDefaultAsync(b => b.Id == id && b.UserId == userId);
-
+            var book = await _context.Books.FirstOrDefaultAsync(b => b.Id == id && b.UserId == userId);
             if (book == null)
                 throw new KeyNotFoundException($"Book with ID {id} not found or access denied.");
 
@@ -54,19 +53,18 @@ namespace ReadingTrackerAPIs.Services.Books
         {
             var books = await _context.Books
                 .Where(b => b.UserId == userId)
+                .OrderByDescending(b => b.CreatedAt)
                 .ToListAsync();
 
-            return _mapper.Map<List<BookDto>>(books);
+            return _mapper.Map<IEnumerable<BookDto>>(books);
         }
 
         public async Task<BookDto> GetBookByIdAsync(Guid id, Guid userId)
         {
             if (id == Guid.Empty)
-                throw new ArgumentNullException(nameof(id), "Book ID cannot be empty.");
+                throw new ArgumentException("Book ID cannot be empty.", nameof(id));
 
-            var book = await _context.Books
-                .FirstOrDefaultAsync(b => b.Id == id && b.UserId == userId);
-
+            var book = await _context.Books.FirstOrDefaultAsync(b => b.Id == id && b.UserId == userId);
             if (book == null)
                 throw new KeyNotFoundException($"Book with ID {id} not found or access denied.");
 
@@ -76,31 +74,30 @@ namespace ReadingTrackerAPIs.Services.Books
         public async Task<BookDto> UpdateBookAsync(BookDto bookDto, Guid id, Guid userId)
         {
             if (id == Guid.Empty)
-                throw new ArgumentNullException(nameof(id), "Book ID cannot be empty.");
+                throw new ArgumentException("Book ID cannot be empty.", nameof(id));
             if (bookDto == null)
                 throw new ArgumentNullException(nameof(bookDto), "Book data cannot be null.");
 
-            var existingBook = await _context.Books
-                .FirstOrDefaultAsync(b => b.Id == id && b.UserId == userId);
-
-            if (existingBook == null)
+            var book = await _context.Books.FirstOrDefaultAsync(b => b.Id == id && b.UserId == userId);
+            if (book == null)
                 throw new KeyNotFoundException($"Book with ID {id} not found or access denied.");
 
-            existingBook.Title = !string.IsNullOrWhiteSpace(bookDto.Title) ? bookDto.Title : existingBook.Title;
-            existingBook.Author = !string.IsNullOrWhiteSpace(bookDto.Author) ? bookDto.Author : existingBook.Author;
-            existingBook.TotalPages = bookDto.TotalPages > 0 ? bookDto.TotalPages : existingBook.TotalPages;
-            existingBook.CoverImage = bookDto.CoverImage ?? existingBook.CoverImage;
+          
+            book.Title = !string.IsNullOrWhiteSpace(bookDto.Title) ? bookDto.Title : book.Title;
+            book.Author = !string.IsNullOrWhiteSpace(bookDto.Author) ? bookDto.Author : book.Author;
+            book.TotalPages = bookDto.TotalPages > 0 ? bookDto.TotalPages : book.TotalPages;
+            book.CoverImage = bookDto.CoverImage ?? book.CoverImage;
 
             if (!Enum.IsDefined(typeof(BookStatus), bookDto.Status))
                 throw new ArgumentException("Invalid book status provided.");
+            book.Status = bookDto.Status;
 
-            existingBook.Status = bookDto.Status;
-            existingBook.UpdatedAt = DateTime.UtcNow;
+            book.UpdatedAt = DateTime.UtcNow;
 
-            _context.Books.Update(existingBook);
+            _context.Books.Update(book);
             await _context.SaveChangesAsync();
 
-            return _mapper.Map<BookDto>(existingBook);
+            return _mapper.Map<BookDto>(book);
         }
     }
 }

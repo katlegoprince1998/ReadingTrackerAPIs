@@ -1,13 +1,17 @@
-﻿namespace ReadingTrackerAPIs.Dtos
+﻿using ReadingTrackerAPIs.Models.Entity;
+
+namespace ReadingTrackerAPIs.Dtos
 {
     public class ReadingProgressDto
     {
         public Guid Id { get; set; }
-        public Guid UserId { get; set; }
-        public Guid BookId { get; set; }
+        public required User User { get; set; }
+        public required Book Book { get; set; }
         public int CurrentPage { get; set; }
+        public int Totalpages { get; set; }
         public int DailyGoal { get; set; }
-        public int StreakCount { get; set; }
         public DateTime LastUpdated { get; set; }
+
+
     }
 }

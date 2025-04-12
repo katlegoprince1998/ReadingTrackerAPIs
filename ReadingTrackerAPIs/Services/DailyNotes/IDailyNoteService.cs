@@ -8,7 +8,7 @@ namespace ReadingTrackerAPIs.Services.DailyNotes
         Task<DailyNoteDto> CreateDailyNoteAsync(CreateDailyNoteDto request, Guid userId, Guid bookId);
         Task<DailyNoteDto> UpdateDailyNoteAsync(UpdateDailyNoteDto request, Guid userId, Guid bookId, Guid dailyNoteId);
         Task<DailyNoteDto> DeleteDailyNote(Guid userId, Guid bookId, Guid dailyNoteId);
-        Task<DailyNoteDto> GetAllDailyNotes(Guid userId);
-        Task<DailyNoteDto> GetDailyNoteById(Guid userId, Guid dailyNoteId);
+        Task<IEnumerable<DailyNoteDto>> GetAllDailyNotes(Guid userId, Guid bookId);
+        Task<DailyNoteDto> GetDailyNoteById(Guid userId, Guid dailyNoteId, Guid bookId);
     }
 }

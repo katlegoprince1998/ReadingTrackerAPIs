@@ -20,9 +20,9 @@ namespace ReadingTrackerAPIs.Models.Entity
 
         public int CurrentPage { get; set; } = 0;
 
-        public int DailyGoal { get; set; }
+        public int Totalpages { get; set; } = 0;
 
-        public int StreakCount { get; set; } = 0;
+        public int DailyGoal { get; set; }
 
         public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
     }

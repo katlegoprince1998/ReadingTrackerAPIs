@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using ReadingTrackerAPIs.Dtos;
 using ReadingTrackerAPIs.Dtos.Request;
 using ReadingTrackerAPIs.Services.Users;
@@ -10,72 +9,72 @@ namespace ReadingTrackerAPIs.Controllers
     [ApiController]
     public class UserController : ControllerBase
     {
-        private readonly IUserService userService;
+        private readonly IUserService _userService;
 
-
-       public UserController(IUserService userService)
+        public UserController(IUserService userService)
         {
-            this.userService = userService;
+            _userService = userService ?? throw new ArgumentNullException(nameof(userService));
         }
 
-        [HttpGet("id")]
-        public async Task<IActionResult> GetUserById(Guid id)
+        [HttpGet("{id}")]
+        public async Task<ActionResult<UserDto>> GetUserById(Guid id)
         {
             if (id == Guid.Empty)
-                throw new ArgumentNullException("Id cannot be null or empty");
+                return BadRequest("Id cannot be empty.");
 
-            var user = await userService.GetAsync(id);
+            var user = await _userService.GetAsync(id);
 
-            if (user == null) return NotFound();
+            if (user == null)
+                return NotFound($"User with ID {id} not found.");
 
             return Ok(user);
-
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateUser(UserDto dto)
+        public async Task<ActionResult<UserDto>> CreateUser([FromBody] UserDto dto)
         {
-            if(dto == null) throw new ArgumentNullException(nameof(dto), " cannot be null");
+            if (dto == null)
+                return BadRequest("User data cannot be null.");
 
-            var createdUser = await userService.CreateAsync(dto);
+            var createdUser = await _userService.CreateAsync(dto);
 
-            if (createdUser == null) return NotFound();
-
-            return Ok(createdUser);
+            return CreatedAtAction(nameof(GetUserById), new { id = createdUser.Id }, createdUser);
         }
 
-        [HttpDelete("id")]
-        public async Task<IActionResult> DeleteUser(Guid id)
+        [HttpDelete("{id}")]
+        public async Task<ActionResult<UserDto>> DeleteUser(Guid id)
         {
-            if (id == Guid.Empty) throw new ArgumentNullException(nameof(id), " cannot be empty");
+            if (id == Guid.Empty)
+                return BadRequest("Id cannot be empty.");
 
-            var deletedUser = await userService.DeleteAsync(id);
+            var deletedUser = await _userService.DeleteAsync(id);
 
-            if (deletedUser == null) return NotFound();
+            if (deletedUser == null)
+                return NotFound($"User with ID {id} not found.");
 
             return Ok(deletedUser);
         }
 
-        [HttpPut("id")]
-         public async Task<IActionResult> UpdateUser(UserUpdateDto dto, Guid id)
+        [HttpPut("{id}")]
+        public async Task<ActionResult<UserDto>> UpdateUser(Guid id, [FromBody] UserUpdateDto dto)
         {
-            if (id == Guid.Empty) throw new ArgumentNullException("Id cannot be null or empty");
+            if (id == Guid.Empty)
+                return BadRequest("Id cannot be empty.");
+            if (dto == null)
+                return BadRequest("User update data cannot be null.");
 
-            if (dto == null) throw new ArgumentNullException("Object cannot be null");
+            var updatedUser = await _userService.UpdateAsync(dto, id);
 
-            var updatedUser = await userService.UpdateAsync(dto, id);
-
-            if (updatedUser == null) return NotFound();
+            if (updatedUser == null)
+                return NotFound($"User with ID {id} not found.");
 
             return Ok(updatedUser);
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAllUser()
+        public async Task<ActionResult<IEnumerable<UserDto>>> GetAllUsers()
         {
-            var users = await userService.GetAllUsersAsync();
-
-            if (users == null) return NotFound();
+            var users = await _userService.GetAllUsersAsync();
 
             return Ok(users);
         }

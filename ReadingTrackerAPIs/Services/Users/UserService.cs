@@ -14,81 +14,74 @@ namespace ReadingTrackerAPIs.Services.Users
 
         public UserService(ApplicationDbContext context, IMapper mapper)
         {
-            this._context = context;
-            this._mapper = mapper;
+            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
         }
 
-         async Task<UserDto> IUserService.CreateAsync(UserDto user)
+        public async Task<UserDto> CreateAsync(UserDto userDto)
         {
-           if(user == null)
-                throw new ArgumentNullException("Object cannot be null {}" + user);
+            if (userDto == null)
+                throw new ArgumentNullException(nameof(userDto), "User data cannot be null.");
 
-           var mappedUser = _mapper.Map<User>(user);
-
-            await _context.Users.AddAsync(mappedUser);
+            var user = _mapper.Map<User>(userDto);
+            await _context.Users.AddAsync(user);
             await _context.SaveChangesAsync();
 
-            return _mapper.Map<UserDto>(mappedUser);
+            return _mapper.Map<UserDto>(user);
         }
 
-         async Task<UserDto> IUserService.DeleteAsync(Guid id)
+        public async Task<UserDto> DeleteAsync(Guid id)
         {
-           if(id == Guid.Empty)
-                throw new ArgumentNullException("Id is empty or null, Please provide user id");
+            if (id == Guid.Empty)
+                throw new ArgumentException("User ID cannot be empty.", nameof(id));
 
             var user = await _context.Users.FindAsync(id);
-
             if (user == null)
-                throw new KeyNotFoundException("User was not found");
+                throw new KeyNotFoundException($"User with ID '{id}' was not found.");
 
-             _context.Users.Remove(user);
-            await _context.Users.FindAsync();
+            _context.Users.Remove(user);
+            await _context.SaveChangesAsync(); 
 
             return _mapper.Map<UserDto>(user);
         }
 
-         async Task<IEnumerable<UserDto>> IUserService.GetAllUsersAsync()
+        public async Task<IEnumerable<UserDto>> GetAllUsersAsync()
         {
-           var users = await _context.Users.ToListAsync();
-
-            if (users == null || users.Count == 0)
-                return Enumerable.Empty<UserDto>();
-
-            return _mapper.Map<List<UserDto>>(users);
+            var users = await _context.Users.ToListAsync();
+            return _mapper.Map<IEnumerable<UserDto>>(users);
         }
 
-         async Task<UserDto> IUserService.GetAsync(Guid id)
+        public async Task<UserDto> GetAsync(Guid id)
         {
             if (id == Guid.Empty)
-                throw new ArgumentNullException("Id cannot be null or empty");
+                throw new ArgumentException("User ID cannot be empty.", nameof(id));
 
-            var user =  await _context.Users.FindAsync(id);
-
+            var user = await _context.Users.FindAsync(id);
             if (user == null)
-                throw new KeyNotFoundException("User was not found");
+                throw new KeyNotFoundException($"User with ID '{id}' was not found.");
 
             return _mapper.Map<UserDto>(user);
         }
 
-        async Task<UserDto> IUserService.UpdateAsync(UserUpdateDto user, Guid id)
+        public async Task<UserDto> UpdateAsync(UserUpdateDto updateDto, Guid id)
         {
+            if (updateDto == null)
+                throw new ArgumentNullException(nameof(updateDto), "Update data cannot be null.");
+
             if (id == Guid.Empty)
-                throw new ArgumentNullException("User ID cannot be null");
+                throw new ArgumentException("User ID cannot be empty.", nameof(id));
 
-            var existingUser = await _context.Users.FindAsync(id);
+            var user = await _context.Users.FindAsync(id);
+            if (user == null)
+                throw new KeyNotFoundException($"User with ID '{id}' was not found.");
 
-            if (existingUser == null)
-                throw new KeyNotFoundException($"User with ID {id} was not found");
+            user.Fullname = updateDto.Fullname ?? user.Fullname;
+            user.ProfilePicture = updateDto.ProfilePicture ?? user.ProfilePicture;
 
-            existingUser.ProfilePicture = user.ProfilePicture == null ? existingUser.ProfilePicture : user.ProfilePicture;
-            existingUser.Fullname = user.Fullname == null ? existingUser.Fullname : user.Fullname;
-
-             _context.Users.Update(existingUser);
+            _context.Users.Update(user);
             await _context.SaveChangesAsync();
 
-            return _mapper.Map<UserDto>(existingUser);
-
-
+            return _mapper.Map<UserDto>(user);
         }
     }
 }

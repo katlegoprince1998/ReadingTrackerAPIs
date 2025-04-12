@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Microsoft.EntityFrameworkCore;
 using ReadingTrackerAPIs.Data;
 using ReadingTrackerAPIs.Dtos;
 using ReadingTrackerAPIs.Dtos.Request;
@@ -17,36 +18,25 @@ namespace ReadingTrackerAPIs.Services.DailyNotes
 
         public DailyNoteService(ApplicationDbContext context, IMapper mapper, IUserService userService, IBookService bookService)
         {
-            this._context = context;
-            this._mapper = mapper;
-            this._userService = userService;
-            this._bookService = bookService;
-            
+            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+            _userService = userService ?? throw new ArgumentNullException(nameof(userService));
+            _bookService = bookService ?? throw new ArgumentNullException(nameof(bookService));
         }
+
         public async Task<DailyNoteDto> CreateDailyNoteAsync(CreateDailyNoteDto request, Guid userId, Guid bookId)
         {
-            if (userId == Guid.Empty)
-                throw new ArgumentException("User ID cannot be empty.", nameof(userId));
-
-            if (bookId == Guid.Empty)
-                throw new ArgumentException("Book ID cannot be empty.", nameof(bookId));
+            ValidateIds(userId, bookId);
 
             if (request == null)
                 throw new ArgumentNullException(nameof(request), "CreateDailyNoteDto request cannot be null.");
 
-            var user = await _userService.GetAsync(userId);
-            if (user == null)
-                throw new KeyNotFoundException($"User with ID '{userId}' was not found.");
-
-            var book = await _bookService.GetBookByIdAsync(bookId, userId);
-            if (book == null)
-                throw new KeyNotFoundException($"Book with ID '{bookId}' for user '{userId}' was not found.");
+            var user = await _userService.GetAsync(userId) ?? throw new KeyNotFoundException($"User with ID '{userId}' was not found.");
+            var book = await _bookService.GetBookByIdAsync(bookId, userId) ?? throw new KeyNotFoundException($"Book with ID '{bookId}' not found for user '{userId}'.");
 
             var dailyNoteEntity = _mapper.Map<DailyNote>(request);
             dailyNoteEntity.UserId = userId;
             dailyNoteEntity.BookId = bookId;
-            dailyNoteEntity.User = _mapper.Map<User>(user);
-            dailyNoteEntity.Book = _mapper.Map<Book>(book);
             dailyNoteEntity.CreatedAt = DateTime.UtcNow;
             dailyNoteEntity.UpdatedAt = DateTime.UtcNow;
 
@@ -56,52 +46,72 @@ namespace ReadingTrackerAPIs.Services.DailyNotes
             return _mapper.Map<DailyNoteDto>(dailyNoteEntity);
         }
 
-
-        async Task<DailyNoteDto> IDailyNoteService.DeleteDailyNote(Guid userId, Guid bookId, Guid dailyNoteId)
+        public async Task<DailyNoteDto> DeleteDailyNote(Guid userId, Guid bookId, Guid dailyNoteId)
         {
-            if(bookId ==  Guid.Empty || userId == Guid.Empty) throw new ArgumentNullException(nameof(userId),nameof(userId)
-                + " UserId or BookId cannot be null");
+            ValidateIds(userId, bookId, dailyNoteId);
 
-            var user = _userService.GetAsync(userId);
-
-            if (user == null)
-                throw new ArgumentNullException(nameof(user), $" user with ID {userId} was not found");
-
-            var book = _bookService.GetBookByIdAsync(bookId, userId);
-
-            if (book == null)
-                throw new ArgumentNullException(nameof(book), $" book was not found wit ID {bookId}");
-
-            var dailyNote = await _context.DailyNotes.FindAsync(dailyNoteId);
-
-            if (dailyNote == null) throw new ArgumentNullException($"Daily note was not found with ID {dailyNote}");
+            var user = await _userService.GetAsync(userId) ?? throw new KeyNotFoundException($"User with ID '{userId}' not found.");
+            var book = await _bookService.GetBookByIdAsync(bookId, userId) ?? throw new KeyNotFoundException($"Book with ID '{bookId}' not found for user '{userId}'.");
+            var dailyNote = await _context.DailyNotes.FindAsync(dailyNoteId) ?? throw new KeyNotFoundException($"Daily note with ID '{dailyNoteId}' not found.");
 
             _context.DailyNotes.Remove(dailyNote);
             await _context.SaveChangesAsync();
 
-            var removedDailyNote = _mapper.Map<DailyNote>(dailyNote);
-            removedDailyNote.User = _mapper.Map<User>(user);
-            removedDailyNote.Book = _mapper.Map<Book>(book);
-            removedDailyNote.UserId = userId;
-            removedDailyNote.BookId = bookId;
-
-            return _mapper.Map<DailyNoteDto>(removedDailyNote);
-
+            return _mapper.Map<DailyNoteDto>(dailyNote);
         }
 
-        Task<DailyNoteDto> IDailyNoteService.GetAllDailyNotes(Guid userId)
+        public async Task<IEnumerable<DailyNoteDto>> GetAllDailyNotes(Guid userId, Guid bookId)
         {
-            throw new NotImplementedException();
+            ValidateIds(userId, bookId);
+
+            var user = await _userService.GetAsync(userId) ?? throw new KeyNotFoundException($"User with ID '{userId}' not found.");
+            var book = await _bookService.GetBookByIdAsync(bookId, userId) ?? throw new KeyNotFoundException($"Book with ID '{bookId}' not found for user '{userId}'.");
+
+            var dailyNotes = await _context.DailyNotes
+                .Where(dn => dn.UserId == userId && dn.BookId == bookId)
+                .ToListAsync();
+
+            return _mapper.Map<IEnumerable<DailyNoteDto>>(dailyNotes);
         }
 
-        Task<DailyNoteDto> IDailyNoteService.GetDailyNoteById(Guid userId, Guid dailyNoteId)
+        public async Task<DailyNoteDto> GetDailyNoteById(Guid userId, Guid bookId, Guid dailyNoteId)
         {
-            throw new NotImplementedException();
+            ValidateIds(userId, bookId, dailyNoteId);
+
+            var dailyNote = await _context.DailyNotes
+                .FirstOrDefaultAsync(dn => dn.UserId == userId && dn.BookId == bookId && dn.Id == dailyNoteId)
+                ?? throw new KeyNotFoundException($"Daily note with ID '{dailyNoteId}' not found.");
+
+            return _mapper.Map<DailyNoteDto>(dailyNote);
         }
 
-        Task<DailyNoteDto> IDailyNoteService.UpdateDailyNoteAsync(UpdateDailyNoteDto request, Guid userId, Guid bookId, Guid dailyNoteId)
+        public async Task<DailyNoteDto> UpdateDailyNoteAsync(UpdateDailyNoteDto request, Guid userId, Guid bookId, Guid dailyNoteId)
         {
-            throw new NotImplementedException();
+            ValidateIds(userId, bookId, dailyNoteId);
+
+            if (request == null)
+                throw new ArgumentNullException(nameof(request), "UpdateDailyNoteDto request cannot be null.");
+
+            var dailyNote = await _context.DailyNotes
+                .FirstOrDefaultAsync(dn => dn.UserId == userId && dn.BookId == bookId && dn.Id == dailyNoteId)
+                ?? throw new KeyNotFoundException($"Daily note with ID '{dailyNoteId}' not found.");
+
+            dailyNote.Content = request.Content;
+            dailyNote.UpdatedAt = DateTime.UtcNow;
+
+            _context.DailyNotes.Update(dailyNote);
+            await _context.SaveChangesAsync();
+
+            return _mapper.Map<DailyNoteDto>(dailyNote);
+        }
+
+        private void ValidateIds(params Guid[] ids)
+        {
+            foreach (var id in ids)
+            {
+                if (id == Guid.Empty)
+                    throw new ArgumentException("One or more GUIDs are invalid.");
+            }
         }
     }
 }
